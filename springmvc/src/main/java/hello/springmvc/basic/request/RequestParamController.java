@@ -1,11 +1,9 @@
 package hello.springmvc.basic.request;
 
+import hello.springmvc.basic.HelloData;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -53,7 +51,7 @@ public class RequestParamController {
     public String requestParamRequired(@RequestParam(required = false) String username,
                                        @RequestParam(required = true) int age) {
         /*자바에서 int형에는 null을 넣을 수 없다.
-        * 넣고 싶으면 Integer 로 객체형으로 넣어야한다.*/
+         * 넣고 싶으면 Integer 로 객체형으로 넣어야한다.*/
 
         log.info("username = {}, age = {}", username, age);
         return "ok";
@@ -62,7 +60,7 @@ public class RequestParamController {
     @ResponseBody
     @RequestMapping("/request-param-default")
     public String requestParamDefault(@RequestParam(required = true, defaultValue = "guest") String username,
-                                       @RequestParam(required = false, defaultValue = "-1") int age) {
+                                      @RequestParam(required = false, defaultValue = "-1") int age) {
 
         log.info("username = {}, age = {}", username, age);
         return "ok";
@@ -76,6 +74,17 @@ public class RequestParamController {
         return "ok";
     }
 
+    @ResponseBody
+    @RequestMapping("/model-attribute-v1")
+    public String modelAttributeV1(@ModelAttribute HelloData helloData) {
+        log.info("username = {}, age = {}", helloData.getUsername(), helloData.getAge());
+        return "ok";
+    }
 
-
+    @ResponseBody
+    @RequestMapping("/model-attribute-v2")
+    public String modelAttributeV2(HelloData helloData) {
+        log.info("username = {}, age = {}", helloData.getUsername(), helloData.getAge());
+        return "ok";
+    }
 }
