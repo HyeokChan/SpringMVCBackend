@@ -75,7 +75,7 @@ public class BasicItemController {
         return "basic/item";
     }
 
-    @PostMapping("/add")
+    //@PostMapping("/add")
     public String addItemV4(Item item, Model model){
         itemRepository.save(item);
         // @ModelAttribute 어노테이션의 name 속성으로 model에 알아서 담아준다.
@@ -83,6 +83,16 @@ public class BasicItemController {
         // 파라미터를 객체로 받으면 @ModelAttribute 어노테이션이 자동 적용된다.
         //model.addAttribute("item", item);
         return "basic/item";
+    }
+
+    @PostMapping("/add")
+    public String addItemV5(Item item, Model model){
+        itemRepository.save(item);
+        // @ModelAttribute 어노테이션의 name 속성으로 model에 알아서 담아준다.
+        // name을 주지 않으면 클래스명의 첫글자를 소문자로 바꿔서 담아준다. Item -> item
+        // 파라미터를 객체로 받으면 @ModelAttribute 어노테이션이 자동 적용된다.
+        //model.addAttribute("item", item);
+        return "redirect:/basic/items/" + item.getId();
     }
 
     @GetMapping("/{itemId}/edit")
