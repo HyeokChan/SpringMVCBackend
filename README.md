@@ -263,3 +263,301 @@ View로 이동하는 코드가 항상 중복 호출되어야 한다. 물론 이 
 ## 스프링 MVC - 구조 이해
 ###  SpringMVC 구조
 ![springmvc](https://user-images.githubusercontent.com/48059565/136827516-e338ea3a-10b9-4b41-af23-87200c5989c5.jpg)
+#### 동작순서
+1. 핸들러 조회: 핸들러 매핑을 통해 요청 URL에 매핑된 핸들러(컨트롤러)를 조회한다.
+2. 핸들러 어댑터 조회: 핸들러를 실행할 수 있는 핸들러 어댑터를 조회한다.
+3. 핸들러 어댑터 실행: 핸들러 어댑터를 실행한다.
+4. 핸들러 실행: 핸들러 어댑터가 실제 핸들러를 실행한다.
+5. ModelAndView 반환: 핸들러 어댑터는 핸들러가 반환하는 정보를 ModelAndView로 변환해서
+반환한다.
+6. viewResolver 호출: 뷰 리졸버를 찾고 실행한다.
+	- JSP의 경우: InternalResourceViewResolver 가 자동 등록되고, 사용된다.
+7. View 반환: 뷰 리졸버는 뷰의 논리 이름을 물리 이름으로 바꾸고, 렌더링 역할을 담당하는 뷰 객체를
+반환한다.
+	- JSP의 경우 InternalResourceView(JstlView) 를 반환하는데, 내부에 forward() 로직이 있다.
+8. 뷰 렌더링: 뷰를 통해서 뷰를 렌더링 한다.
+
+## 스프링 MVC - 시작하기
+
+#### @Controller :
+스프링이 자동으로 스프링 빈으로 등록한다. (내부에 @Component 애노테이션이 있어서 컴포넌트
+스캔의 대상이 됨)
+스프링 MVC에서 애노테이션 기반 컨트롤러로 인식한다.
+#### @RequestMapping : 
+요청 정보를 매핑한다. 해당 URL이 호출되면 이 메서드가 호출된다. 애노테이션을
+기반으로 동작하기 때문에, 메서드의 이름은 임의로 지으면 된다.
+#### 클래스 레벨에 다음과 같이 @RequestMapping 을 두면 메서드 레벨과 조합이 된다.
+- 클래스 레벨 @RequestMapping("/springmvc/v2/members")
+	- 메서드 레벨 @RequestMapping("/new-form") => /springmvc/v2/members/new-form
+	- 메서드 레벨 @RequestMapping("/save") => /springmvc/v2/members/save
+	- 메서드 레벨 @RequestMapping => /springmvc/v2/members
+
+## 스프링 MVC - 기본 기능
+### 로깅
+	log.trace("trace log={}", name);
+	log.debug("debug log={}", name);
+	log.info(" info log={}", name);
+	log.warn(" warn log={}", name);
+	log.error("error log={}", name);
+
+LEVEL: TRACE > DEBUG > INFO > WARN > ERROR
+개발 서버는 debug 출력
+운영 서버는 info 출력
+
+
+### 요청 매핑
+#### @RestController : 
+@Controller 는 반환 값이 String 이면 뷰 이름으로 인식된다. 그래서 뷰를 찾고 뷰가 랜더링 된다.
+@RestController 는 반환 값으로 뷰를 찾는 것이 아니라, HTTP 메시지 바디에 바로 입력한다.
+따라서 실행 결과로 ok 메세지를 받을 수 있다. @ResponseBody 와 관련이 있는데, 뒤에서 더 자세히
+설명한다.
+#### @RequestMapping("/hello-basic") : 
+/hello-basic URL 호출이 오면 이 메서드가 실행되도록 매핑한다.
+대부분의 속성을 배열[] 로 제공하므로 다중 설정도 가능하다. {"/hello-basic", "/hello-go"}
+#### HTTP 메서드 매핑 축약
+	/**
+	* 편리한 축약 애노테이션 (코드보기)
+	* @GetMapping
+	* @PostMapping
+	* @PutMapping
+	* @DeleteMapping
+	* @PatchMapping
+	*/
+	@GetMapping(value = "/mapping-get-v2")
+	public String mappingGetV2() {
+		log.info("mapping-get-v2");
+		return "ok";
+	}
+#### PathVariable(경로 변수) 사용
+	* PathVariable 사용
+	* 변수명이 같으면 생략 가능
+	* @PathVariable("userId") String userId -> @PathVariable userId
+	*/
+	@GetMapping("/mapping/{userId}")
+	public String mappingPath(@PathVariable("userId") String data) {
+		log.info("mappingPath userId={}", data);
+		return "ok";
+	}
+### HTTP 요청 - 기본, 헤더 조회
+	public String headers(HttpServletRequest request,
+										HttpServletResponse response,
+										HttpMethod httpMethod,
+										Locale locale,
+										@RequestHeader MultiValueMap<String, String>
+										headerMap,
+										@RequestHeader("host") String host,
+										@CookieValue(value = "myCookie", required = false)
+										String cookie
+	) { ... }
+애노테이션 기반의 스프링 컨트롤러는 다양한 파라미터를 지원한다.
+
+### HTTP 요청 파라미터 - @RequestParam
+	/**
+	* @RequestParam 사용
+	* - 파라미터 이름으로 바인딩
+	* - HTTP 파라미터 이름이 변수 이름과 같으면 @RequestParam(name="xx") 생략 가능
+	* - required 옵션으로 필수 여부 설정 가능
+	* @ResponseBody 추가
+	* - View 조회를 무시하고, HTTP message body에 직접 해당 내용 입력
+	*/
+	@ResponseBody
+	@RequestMapping("/request-param-v2")
+	public String requestParamV2(
+		@RequestParam("username") String memberName,
+		@RequestParam("age") int memberAge) {
+		log.info("username={}, age={}", memberName, memberAge);
+		return "ok";
+	}
+스프링이 제공하는 @RequestParam 을 사용하면 요청 파라미터를 매우 편리하게 사용할 수 있다.
+#### @RequestParam : 
+파라미터 이름으로 바인딩
+#### @ResponseBody : 
+View 조회를 무시하고, HTTP message body에 직접 해당 내용 입력
+@RestController와 같은 역할
+
+### HTTP 요청 파라미터 - @ModelAttribute
+	/**
+	* @ModelAttribute 사용
+	* 참고: model.addAttribute(helloData) 코드도 함께 자동 적용됨, 뒤에 model을 설명할 때
+	자세히 설명
+	*/
+	@ResponseBody
+	@RequestMapping("/model-attribute-v1")
+	public String modelAttributeV1(@ModelAttribute HelloData helloData) {
+		log.info("username={}, age={}", helloData.getUsername(),
+		helloData.getAge());
+		return "ok";
+	}
+스프링MVC는 @ModelAttribute 가 있으면 다음을 실행한다.
+1. HelloData 객체를 생성한다.
+2. 요청 파라미터의 이름으로 HelloData 객체의 프로퍼티를 찾는다. 그리고 해당 프로퍼티의 setter를
+호출해서 파라미터의 값을 입력(바인딩) 한다.
+예) 파라미터 이름이 username 이면 setUsername() 메서드를 찾아서 호출하면서 값을 입력한다.
+
+### HTTP 요청 메시지 - 단순 텍스트
+요청 파라미터와 다르게, HTTP 메시지 바디를 통해 데이터가 직접 데이터가 넘어오는 경우는
+@RequestParam , @ModelAttribute 를 사용할 수 없다.
+
+	/**
+	* @RequestBody
+	* - 메시지 바디 정보를 직접 조회(@RequestParam X, @ModelAttribute X)
+	* - HttpMessageConverter 사용 -> StringHttpMessageConverter 적용
+	*
+	* @ResponseBody
+	* - 메시지 바디 정보 직접 반환(view 조회X)
+	* - HttpMessageConverter 사용 -> StringHttpMessageConverter 적용
+	*/
+	@ResponseBody
+	@PostMapping("/request-body-string-v4")
+	public String requestBodyStringV4(@RequestBody String messageBody) {
+		log.info("messageBody={}", messageBody);
+		return "ok";
+	}
+#### @RequestBody : 
+@RequestBody 를 사용하면 HTTP 메시지 바디 정보를 편리하게 조회할 수 있다. 참고로 헤더 정보가
+필요하다면 HttpEntity 를 사용하거나 @RequestHeader 를 사용하면 된다.
+이렇게 메시지 바디를 직접 조회하는 기능은 요청 파라미터를 조회하는 @RequestParam ,
+@ModelAttribute 와는 전혀 관계가 없다.
+#### 요청 파라미터 vs HTTP 메시지 바디
+- 요청 파라미터를 조회하는 기능: @RequestParam , @ModelAttribute
+- HTTP 메시지 바디를 직접 조회하는 기능: @RequestBody
+#### @ResponseBody
+@ResponseBody 를 사용하면 응답 결과를 HTTP 메시지 바디에 직접 담아서 전달할 수 있다.
+물론 이 경우에도 view를 사용하지 않는다.
+
+### HTTP 요청 메시지 - JSON
+	/**
+	* @RequestBody 생략 불가능(@ModelAttribute 가 적용되어 버림)
+	* HttpMessageConverter 사용 -> MappingJackson2HttpMessageConverter (contenttype:
+	application/json)
+	*
+	* @ResponseBody 적용
+	* - 메시지 바디 정보 직접 반환(view 조회X)
+	* - HttpMessageConverter 사용 -> MappingJackson2HttpMessageConverter 적용
+	(Accept: application/json)
+	*/
+	@ResponseBody
+	@PostMapping("/request-body-json-v5")
+	public HelloData requestBodyJsonV5(@RequestBody HelloData data) {
+		log.info("username={}, age={}", data.getUsername(), data.getAge());
+		return data;
+	}
+- @RequestBody 요청
+	- JSON 요청 HTTP 메시지 컨버터 객체
+- @ResponseBody 응답
+	- 객체 HTTP 메시지 컨버터 JSON 응답
+
+### HTTP 응답 - 정적 리소스, 뷰 템플릿
+- 정적 리소스
+	- 예) 웹 브라우저에 정적인 HTML, css, js을 제공할 때는, 정적 리소스를 사용한다.
+- 뷰 템플릿 사용
+	- 예) 웹 브라우저에 동적인 HTML을 제공할 때는 뷰 템플릿을 사용한다.
+- HTTP 메시지 사용
+	- HTTP API를 제공하는 경우에는 HTML이 아니라 데이터를 전달해야 하므로, HTTP 메시지 바디에 JSON 같은 형식으로 데이터를 실어 보낸다.
+
+### HTTP 메시지 컨버터
+#### @ResponseBody 를 사용 : 
+- HTTP의 BODY에 문자 내용을 직접 반환
+- viewResolver 대신에 HttpMessageConverter 가 동작
+- 기본 문자처리: StringHttpMessageConverter
+- 기본 객체처리: MappingJackson2HttpMessageConverter
+- byte 처리 등등 기타 여러 HttpMessageConverter가 기본으로 등록되어 있음
+#### HTTP 요청 데이터 읽기 : 
+1. HTTP 요청이 오고, 컨트롤러에서 @RequestBody , HttpEntity 파라미터를 사용한다.
+2. 메시지 컨버터가 메시지를 읽을 수 있는지 확인하기 위해 canRead() 를 호출한다.
+	- 대상 클래스 타입을 지원하는가.
+		- 예) @RequestBody 의 대상 클래스 ( byte[] , String , HelloData )
+	- HTTP 요청의 Content-Type 미디어 타입을 지원하는가.
+		- 예) text/plain , application/json , */*
+3. canRead() 조건을 만족하면 read() 를 호출해서 객체 생성하고, 반환한다.
+#### HTTP 응답 데이터 생성
+1. 컨트롤러에서 @ResponseBody , HttpEntity 로 값이 반환된다.
+2. 메시지 컨버터가 메시지를 쓸 수 있는지 확인하기 위해 canWrite() 를 호출한다.
+	- 대상 클래스 타입을 지원하는가.
+		- 예) return의 대상 클래스 ( byte[] , String , HelloData )
+	- HTTP 요청의 Accept 미디어 타입을 지원하는가.(더 정확히는 @RequestMapping 의 produces )
+		- 예) text/plain , application/json , */*
+3. canWrite() 조건을 만족하면 write() 를 호출해서 HTTP 응답 메시지 바디에 데이터를 생성한다.
+
+#### RequestMappingHandlerAdapter 동작 방식
+![requestmappingHanddlerAdapter](https://user-images.githubusercontent.com/48059565/136985564-cc218453-b955-4797-828c-19d2cef1c3f5.jpg)
+#### ArgumentResolver
+애노테이션 기반 컨트롤러를 처리하는 RequestMappingHandlerAdaptor 는 바로 이
+ArgumentResolver 를 호출해서 컨트롤러(핸들러)가 필요로 하는 다양한 파라미터의 값(객체)을 생성한다.
+그리고 이렇게 파리미터의 값이 모두 준비되면 컨트롤러를 호출하면서 값을 넘겨준다.
+#### HTTP 메시지 컨버터 위치
+![messageCv](https://user-images.githubusercontent.com/48059565/136985893-f8bfe58b-bc42-4401-ae33-d20d599e5f70.jpg)
+#### 요청의 경우 
+@RequestBody 를 처리하는 ArgumentResolver 가 있고, HttpEntity 를 처리하는
+ArgumentResolver 가 있다. 이 ArgumentResolver 들이 HTTP 메시지 컨버터를 사용해서 필요한
+객체를 생성하는 것이다. 
+#### 응답의 경우 
+@ResponseBody 와 HttpEntity 를 처리하는 ReturnValueHandler 가 있다. 그리고
+여기에서 HTTP 메시지 컨버터를 호출해서 응답 결과를 만든다.
+## 타임리프
+#### 타임리프 사용 선언
+	<html xmlns:th="http://www.thymeleaf.org">
+#### 속성 변경 - th:href
+	th:href="@{/css/bootstrap.min.css}"
+- href="value1" 을 th:href="value2" 의 값으로 변경한다.
+- 타임리프 뷰 템플릿을 거치게 되면 원래 값을 th:xxx 값으로 변경한다. 만약 값이 없다면 새로 생성한다.
+- HTML을 그대로 볼 때는 href 속성이 사용되고, 뷰 템플릿을 거치면 th:href 의 값이 href 로 대체되면서 동적으로 변경할 수 있다.
+- 대부분의 HTML 속성을 th:xxx 로 변경할 수 있다.
+#### 타임리프 핵심
+- 핵심은 th:xxx 가 붙은 부분은 서버사이드에서 렌더링 되고, 기존 것을 대체한다. th:xxx 이 없으면 기존 html의 xxx 속성이 그대로 사용된다.
+- HTML을 파일로 직접 열었을 때, th:xxx 가 있어도 웹 브라우저는 th: 속성을 알지 못하므로 무시한다.
+- 따라서 HTML을 파일 보기를 유지하면서 템플릿 기능도 할 수 있다
+#### 속성 변경 - th:onclick
+	onclick="location.href='addForm.html'"
+	th:onclick="|location.href='@{/basic/items/add}'|"
+#### 리터럴 대체 - |...|
+- 타임리프에서 문자와 표현식 등은 분리되어 있기 때문에 더해서 사용해야 한다.
+	
+		<span th:text="'Welcome to our application, ' + ${user.name} + '!'">
+- 다음과 같이 리터럴 대체 문법을 사용하면, 더하기 없이 편리하게 사용할 수 있다.
+	
+		<span th:text="|Welcome to our application, ${user.name}!|">
+
+#### 반복 출력 - th:each
+	<tr th:each="item : ${items}">
+		<td><a href="item.html" th:href="@{/basic/items/{itemId}(itemId=${item.id})}" th:text="${item.id}">회원id</a></td>
+		<td><a href="item.html" th:href="@{|/basic/items/${item.id}|}"th:text="${item.itemName}">상품명</a></td>
+		<td th:text="${item.price}">10000</td>
+		<td th:text="${item.quantity}">10</td>
+	</tr>
+
+#### 변수 표현식 - ${...}
+	<td th:text="${item.price}">10000</td>
+- 모델에 포함된 값이나, 타임리프 변수로 선언한 값을 조회할 수 있다.
+- 프로퍼티 접근법을 사용한다. ( item.getPrice() )
+#### 내용 변경 - th:text
+	<td th:text="${item.price}">10000</td>
+- 내용의 값을 th:text 의 값으로 변경한다.
+#### URL 링크 표현식2 - @{...},
+	th:href="@{/basic/items/{itemId}(itemId=${item.id})}"
+#### URL 링크 간단히
+	th:href="@{|/basic/items/${item.id}|}"
+- 리터럴 대체 문법을 활용해서 간단히 사용할 수도 있다.
+
+## PRG Post/Redirect/Get
+![PRG](https://user-images.githubusercontent.com/48059565/136988143-3be0de73-aaab-4bc1-bbd9-cb3ef6d8aed3.jpg)
+웹 브라우저의 새로 고침은 마지막에 서버에 전송한 데이터를 다시 전송한다.
+새로 고침 문제를 해결하려면 상품 저장 후에 뷰 템플릿으로 이동하는 것이 아니라, 상품 상세 화면으로
+리다이렉트를 호출해주면 된다. (URL을 바꾸어 Controller 단에서 부터 다시 동작한다.)
+웹 브라우저는 리다이렉트의 영향으로 상품 저장 후에 실제 상품 상세 화면으로 다시 이동한다. 따라서
+마지막에 호출한 내용이 상품 상세 화면인 GET /items/{id} 가 되는 것이다.
+이후 새로고침을 해도 상품 상세 화면으로 이동하게 되므로 새로 고침 문제를 해결할 수 있다.
+#### RedirectAttributes
+	"redirect:/basic/items/" + item.getId()
+item.getId()의 인코딩 문제 해결
+
+	/**
+	* RedirectAttributes
+	*/
+	@PostMapping("/add")
+	public String addItemV6(Item item, RedirectAttributes redirectAttributes) {
+		Item savedItem = itemRepository.save(item);
+		redirectAttributes.addAttribute("itemId", savedItem.getId());
+		redirectAttributes.addAttribute("status", true);
+		return "redirect:/basic/items/{itemId}";
+	}
